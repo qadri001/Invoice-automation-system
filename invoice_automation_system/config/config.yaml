@@ -1,0 +1,100 @@
+# Invoice Automation System Configuration
+
+system:
+  name: "Smart Invoice Processor"
+  version: "1.0.0"
+  debug: false
+  log_level: "INFO"
+
+paths:
+  input_dir: "data/invoices"
+  processed_dir: "data/processed"
+  database_path: "data/database/invoices.db"
+  log_dir: "logs"
+
+ocr:
+  engine: "paddleocr"  # Options: "paddleocr", "tesseract", "hybrid"
+  languages: ["en"]
+  confidence_threshold: 0.6
+  preprocessing:
+    denoise: true
+    deskew: true
+    contrast_enhance: true
+
+extraction:
+  fields:
+    - vendor_name
+    - invoice_number
+    - invoice_date
+    - due_date
+    - total_amount
+    - subtotal
+    - tax_amount
+    - currency
+    - line_items
+
+  patterns:
+    invoice_number:
+      - "(?i)invoice\s*(?:#|number|no|num)[:\s]*([A-Z0-9-]+)"
+      - "(?i)(?:inv|invoice)[-\s]?([A-Z0-9]{5,20})"
+      - "(?i)bill\s*number[:\s]*([A-Z0-9-]+)"
+
+    date:
+      - "(?i)(?:invoice\s*)?date[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"
+      - "(?i)(?:invoice\s*)?date[:\s]*(\d{4}[/-]\d{1,2}[/-]\d{1,2})"
+      - "(?i)(?:issued|created)[:\s]*(\d{1,2}\s+[A-Za-z]+\s+\d{4})"
+
+    amount:
+      - "(?i)total[:\s]*[$€£¥]?\s*([0-9,]+\.?[0-9]*)"
+      - "(?i)amount\s*due[:\s]*[$€£¥]?\s*([0-9,]+\.?[0-9]*)"
+      - "(?i)grand\s*total[:\s]*[$€£¥]?\s*([0-9,]+\.?[0-9]*)"
+      - "(?i)balance\s*due[:\s]*[$€£¥]?\s*([0-9,]+\.?[0-9]*)"
+
+validation:
+  required_fields:
+    - vendor_name
+    - invoice_number
+    - invoice_date
+    - total_amount
+
+  thresholds:
+    duplicate_check_days: 365
+    max_amount_alert: 10000.00
+    min_confidence_score: 0.7
+
+  rules:
+    allow_future_dates: false
+    max_date_future_days: 30
+    currency_validation: true
+
+alerts:
+  enabled: true
+  channels:
+    - console
+    - email  # Optional: configure SMTP
+    - slack  # Optional: configure webhook
+
+  email:
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    username: ""
+    password: ""
+    recipients: []
+
+  slack:
+    webhook_url: ""
+
+processing:
+  batch_size: 10
+  retry_attempts: 3
+  timeout_seconds: 300
+  auto_process: true
+  backup_originals: true
+
+llm:
+  enabled: false  # Set to true to use LLM for complex extractions
+  provider: "openai"  # Options: "openai", "anthropic"
+  model: "gpt-4"
+  api_key: ""
+  max_tokens: 1000
+  temperature: 0.0

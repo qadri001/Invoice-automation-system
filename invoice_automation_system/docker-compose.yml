@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  invoice-processor:
+    build: .
+    container_name: invoice_automation
+    volumes:
+      - ./data/invoices:/app/data/invoices
+      - ./data/processed:/app/data/processed
+      - ./data/database:/app/data/database
+      - ./logs:/app/logs
+      - ./config:/app/config
+    environment:
+      - OCR_ENGINE=paddleocr
+      - DATABASE_PATH=/app/data/database/invoices.db
+    command: python run.py --watch
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: invoice_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - DATABASE_PATH=/app/data/database/invoices.db
+    command: python -m uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  dashboard:
+    build: .
+    container_name: invoice_dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - DATABASE_PATH=/app/data/database/invoices.db
+    command: streamlit run src/dashboard/app.py --server.port=8501 --server.address=0.0.0.0
+    restart: unless-stopped
